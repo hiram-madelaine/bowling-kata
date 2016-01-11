@@ -27,11 +27,11 @@
                     :id s/Int
                     :score Score})
 
-(s/defschema Game [Frame])
+(s/defschema Game {:game [Frame]})
 
 ;________________________________________________
 ;                                                |
-;         API                                    |
+;         Score API                              |
 ;________________________________________________|
 
 (def add
@@ -70,16 +70,32 @@
        (into [] x-score)
        (reductions +)))
 
+
+;________________________________________________
+;                                                |
+;         UI API                                 |
+;________________________________________________|
+
+(s/defn frame-finished?
+  [{:keys [rolls id] :as frame} :- Frame]
+  (match [(bonus rolls) id (count rolls)]
+         [(:or :strike :spare) (_ :guard #(< % 10)) _] true
+         [nil _ 2] true
+         [(:or :strike :spare) 10 3] true
+         :else false))
+
+
 (s/defn ->game :- Game
   [all-rolls :- GameRolls]
   (->> all-rolls
       (map-indexed
              (fn [i rolls]
                (assoc {} :rolls rolls
-                         :id i
+                         :id (inc i)
                          :bonus (bonus rolls))))
        (map (fn [score frame]
-              (assoc frame :score score)) (game-score all-rolls))))
+              (assoc frame :score score)) (game-score all-rolls))
+       (assoc {} :game)))
 
 (s/defn ->all-rolls :- GameRolls
   [game :- Game]

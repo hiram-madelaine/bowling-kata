@@ -5,14 +5,32 @@ body {
 }
 
 .game {
+    border: 1px black solid;
     display: flex;
+}
+
+.frame {
+    display: flex;
+    flex-direction: column;
+    width: 65px;
+    flex-grow: 1;
 }
 
 .rolls {
     display: flex;
 }
 
-.roll {
-    border: 1px black solid;
-    padding: 3px;
+
+.frame-item {
+    border: 1px rgb(0,129,4) solid;
+    display: flex;
+    justify-content: center;
+    background-color: rgb(202,255,206);
+    flex-grow: 1;
+    font-weight: bold;
+}
+
+
+.header {
+    background-color: rgb(254,255,206);
 }

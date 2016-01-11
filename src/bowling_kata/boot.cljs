@@ -8,47 +8,100 @@
 
 (enable-console-print!)
 
-(def state (bow/->game [[8 1] [9 1] [10] [10] [8 1] [7 2] [10] [10] [10] [8 2 9]]))
+(def empty-game (merge {:round 1} (bow/->game (repeat 10 []))))
+(def state empty-game
+  #_(bow/->game [[8 1] [9 1] [10] [10] [8 1] [7 2] [10] [10] [10] [8 2 9]]))
 
-(prn (bow/game-score state))
 
 
+(defn second-roll []
+  (let [r1 (rand-int 10)
+       max (- 10 r1)]
+   (prn [r1 (rand-int max)])))
 
 ;________________________________________________
 ;                                                |
 ;         Component                              |
 ;________________________________________________|
 
+(defn display-rolls
+  [rolls]
+  (let [[r1 r2 r3] rolls]
+    (condp = (bow/bonus rolls)
+      :spare (if r3 [r1 "/" r3] [r1 "/"])
+      :strike ["X" ""]
+      rolls)))
 
 
 (defui Frame
+  static om/Ident
+  (ident [this props]
+    [:frame/by-id (:id props)])
+  static om/IQuery
+  (query [this]
+    [:rolls :score :id])
   Object
   (render [this]
-    (let [rolls (:rolls (om/props this))
-          bonus (bow/bonus rolls)]
-      (apply dom/div #js {:className "rolls"}
-             (for [roll rolls]
-               (dom/div #js {:className "roll"} roll))))))
+    (let [{:keys [id score rolls]} (om/props this)
+          rolls (display-rolls rolls)]
+      (dom/div #js {:className "frame"}
+               (dom/div #js {:className "header frame-item"} id)
+               (apply dom/div #js {:className "rolls"}
+                             (for [roll rolls]
+                               (dom/div #js {:className "frame-item"} roll)))
+               (dom/div #js {:className "frame-item"}
+                 (dom/div #js {:className ""} score))))))
 
 (def frame (om/factory Frame))
 
 (defui Game
+  static om/IQuery
+  (query [this]
+    [{:game (om/get-query Frame)} ])
   Object
   (render [this]
-    (let [game (om/props this)]
-      (dom/div #js {}
-                 (apply dom/div #js {:className "game"} (map frame game))))))
+    (let [game (:game (om/props this))]
+      (dom/div #js{}
+               (dom/div #js {}
+                (apply dom/div #js {:className "game"} (map frame game)))
+        (dom/button #js {:onClick (fn [e]
+                                    (om/transact! this '[(game/roll)]))} "Roll the Ball !")))))
 
-(def game (om/factory Game))
 
 ;________________________________________________
 ;                                                |
-;         Parser                                 |
+;         Parser Read                            |
 ;________________________________________________|
 
+(defmulti read om/dispatch)
+
+(defmethod read :game
+  [{:keys [state] :as env} key params]
+  (let [st @state]
+    (prn @state)
+    {:value (get st key)}))
+
+;________________________________________________
+;                                                |
+;         Parser Read                            |
+;________________________________________________|
+
+(defmulti mutate om/dispatch)
 
 
 
+
+(defn next-game
+  [{:keys [game round] :as state}]
+  (prn "round : " round)
+
+  state)
+
+(defmethod mutate 'game/roll
+  [{:keys [state] :as env} key params]
+  {:action (fn []
+             (swap! state next-game))
+   })
 
 ;________________________________________________
 ;                                                |
@@ -56,10 +109,12 @@
 ;________________________________________________|
 
 
-#_(def reconciler (om/reconciler {:state game}))
+(def reconciler (om/reconciler {:parser (om/parser {:read read
+                                                    :mutate mutate})
+                                :state  state}))
 
 
-#_(om/add-root! reconciler Game (gdom/$ "app") )
+(om/add-root! reconciler Game (gdom/$ "app"))
 
 
-(js/ReactDOM.render (game state) (gdom/getElement "app"))
+#_(js/ReactDOM.render (game state) (gdom/getElement "app"))

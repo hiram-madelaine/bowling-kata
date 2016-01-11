@@ -1,6 +1,6 @@
 (ns bowling-kata.t-core
   (:use midje.sweet)
-  (:require [bowling-kata.core :as bow]
+  (:require [bowling-kata.core :as bow :relaod true]
             [schema.core :as s]
             [schema.test]
             [clojure.test.check :as tc]
@@ -30,15 +30,21 @@
         (bow/game-score [[8 1] [9 1]]) => [9 19]
         (bow/game-score [[8 1] [9 1] [10]]) => [9 29 39]))
 
-(def game [[8 1] [9 1] [10] [10] [8 1] [7 2] [10] [10] [10] [8 2 9]])
+(def all-rolls [[8 1] [9 1] [10] [10] [8 1] [7 2] [10] [10] [10] [8 2 9]])
+
 
 
 (s/with-fn-validation
   (fact "Cumultative Game score"
-       (bow/game-score game) => [9 29 57 76 85 94 124 152 172 191]))
+        (bow/game-score all-rolls) => [9 29 57 76 85 94 124 152 172 191]))
 
 
-(fact "using test.check"
-      (let [r1 (rand-int 10)
-            max (- 10 r1)]
-        (prn [r1 (rand-int max)])))
+
+(fact "round trip all-rolls<->game"
+      (-> all-rolls
+          bow/->game
+          bow/->all-rolls) => all-rolls)
+
+(fact "Round is finished ?"
+      (bow/frame-finished? {:rolls []
+                            :id 1}) => false)
