@@ -2,7 +2,10 @@
   (:use midje.sweet)
   (:require [bowling-kata.core :as bow]
             [schema.core :as s]
-            [schema.test]))
+            [schema.test]
+            [clojure.test.check :as tc]
+            [clojure.test.check.generators :as gen]
+            [clojure.test.check.properties :as prop :include-macros true]))
 
 
 (s/with-fn-validation
@@ -18,11 +21,9 @@
       (bow/frame-score [10 10 8]) => 28
       (bow/frame-score [10]) => 10)
 
-
 (s/with-fn-validation
   (fact "Start Game score"
         (bow/game-score [[8 1]]) => [9]))
-
 
 (s/with-fn-validation
   (fact "Ongoing Game score"
@@ -37,5 +38,7 @@
        (bow/game-score game) => [9 29 57 76 85 94 124 152 172 191]))
 
 
-(fact "Total score"
-      (bow/total-score game) => 191)
+(fact "using test.check"
+      (let [r1 (rand-int 10)
+            max (- 10 r1)]
+        (prn [r1 (rand-int max)])))

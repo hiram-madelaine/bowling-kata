@@ -14,13 +14,18 @@
 
 (s/defschema Bonus (s/maybe (s/enum :spare :strike)))
 
-(s/defschema Rolls
-  "Three rolls"
+(s/defschema FrameRolls
+  "One Roll (strike) to three Rolls on the 10nth Frame"
   [(s/one Roll "First Roll")
    (s/optional Roll "Second Roll")
    (s/optional Roll "Extra Ball")])
 
-(s/defschema Frame Rolls)
+(s/defschema GameRolls "All rolls of the entire Game" [FrameRolls])
+
+(s/defschema Frame {:rolls FrameRolls
+                    :bonus Bonus
+                    :id s/Int
+                    :score Score})
 
 (s/defschema Game [Frame])
 
@@ -33,9 +38,9 @@
   "Special + that handle nil parameters."
   (fnil + 0 0 0))
 
-(s/defn bonus :- (s/maybe Bonus)
+(s/defn bonus :- Bonus
   "Determine if frame has a bonus"
-  [rolls :- Rolls]
+  [rolls :- FrameRolls]
   (let [[roll1 roll2] rolls]
     (match [roll1 roll2 (add roll1 roll2)]
            [10 _ _] :strike
@@ -51,7 +56,7 @@
            :else (add r1 r2))))
 
 (def x-score
-  "Transducer for "
+  "Transducer to compute all frames score."
   (comp (map flatten)
         (map #(take 3 %))
         (map frame-score)))
@@ -59,16 +64,23 @@
 
 (s/defn game-score :- [Score]
   "Cumulative score for all frames"
-  [game :- Game]
-  (->> game
+  [all-rolls :- GameRolls]
+  (->> all-rolls
        (partition-all 3 1) ; This arity can not ne included in the transducer
        (into [] x-score)
        (reductions +)))
 
-(s/defn total-score :- Score
+(s/defn ->game :- Game
+  [all-rolls :- GameRolls]
+  (->> all-rolls
+      (map-indexed
+             (fn [i rolls]
+               (assoc {} :rolls rolls
+                         :id i
+                         :bonus (bonus rolls))))
+       (map (fn [score frame]
+              (assoc frame :score score)) (game-score all-rolls))))
+
+(s/defn ->all-rolls :- GameRolls
   [game :- Game]
-  (->> game
-       (partition-all 3 1)
-       (transduce x-score +)))
-
-
+  (mapv :rolls game))
