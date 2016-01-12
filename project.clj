@@ -12,7 +12,8 @@
                  [org.clojure/core.match "0.3.0-alpha4"]
                  [figwheel-sidecar "0.5.0-SNAPSHOT" :scope "test"]
                  [devcards "0.2.1-4"]
-                 [org.clojure/test.check "0.9.0"]]
+                 [org.clojure/test.check "0.9.0"]
+                 [com.rpl/specter "0.9.1"]]
 
   :clean-targets ^{:protect false} ["resources/public/js" "target"]
   )

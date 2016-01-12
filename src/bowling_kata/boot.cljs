@@ -4,7 +4,8 @@
             [om.next :as om :refer-macros [defui]]
             [om.dom :as dom]
             [clojure.string :as str]
-            [cljs.pprint :refer [pprint] :as pp]))
+            [cljs.pprint :refer [pprint] :as pp]
+            [com.rpl.specter :as spec :refer [transform select FIRST LAST ALL comp-paths select-one] :include-macros true]))
 
 (enable-console-print!)
 
@@ -62,10 +63,11 @@
   (render [this]
     (let [game (:game (om/props this))]
       (dom/div #js{}
+               (dom/button #js {:onClick (fn [e]
+                                           (om/transact! this '[(game/roll) :game]))} "Roll the Ball !")
                (dom/div #js {}
                 (apply dom/div #js {:className "game"} (map frame game)))
-        (dom/button #js {:onClick (fn [e]
-                                    (om/transact! this '[(game/roll)]))} "Roll the Ball !")))))
+               ))))
 
 
 ;________________________________________________
@@ -90,18 +92,16 @@
 
 
 
-
 (defn next-game
-  [{:keys [game round] :as state}]
-  (prn "round : " round)
-
-  state)
+  [{:keys [round] :as state}]
+  (let [state (transform [:game ALL #(= round (:id %))] #(update-in % [:rolls] conj (rand-int 10)) state)]
+    (if (bow/frame-done? (select-one [:game ALL #(= round (:id %))] state))
+         (transform [:round] inc state)
+         state)))
 
 (defmethod mutate 'game/roll
   [{:keys [state] :as env} key params]
-  {:action (fn []
-             (swap! state next-game))
-   })
+  {:action #(swap! state next-game)})
 
 ;________________________________________________
 ;                                                |

@@ -23,12 +23,12 @@
 
 (s/with-fn-validation
   (fact "Start Game score"
-        (bow/game-score [[8 1]]) => [9]))
+        (bow/scores [[8 1]]) => [9]))
 
 (s/with-fn-validation
   (fact "Ongoing Game score"
-        (bow/game-score [[8 1] [9 1]]) => [9 19]
-        (bow/game-score [[8 1] [9 1] [10]]) => [9 29 39]))
+        (bow/scores [[8 1] [9 1]]) => [9 19]
+        (bow/scores [[8 1] [9 1] [10]]) => [9 29 39]))
 
 (def all-rolls [[8 1] [9 1] [10] [10] [8 1] [7 2] [10] [10] [10] [8 2 9]])
 
@@ -36,7 +36,7 @@
 
 (s/with-fn-validation
   (fact "Cumultative Game score"
-        (bow/game-score all-rolls) => [9 29 57 76 85 94 124 152 172 191]))
+        (bow/scores all-rolls) => [9 29 57 76 85 94 124 152 172 191]))
 
 
 
@@ -45,6 +45,36 @@
           bow/->game
           bow/->all-rolls) => all-rolls)
 
-(fact "Round is finished ?"
-      (bow/frame-finished? {:rolls []
-                            :id 1}) => false)
+
+(defn only [pins-down]
+  (into [] (repeat 10 [pins-down pins-down])))
+(def spare-ex [[1 1] [1 1] [1 1] [1 1] [8 2] [1 1] [1 1] [1 1] [1 1] [1 1]])
+
+(def strike-ex [[1 1] [1 1] [1 1] [1 1] [10] [1 1] [1 1] [1 1] [1 1] [1 1]])
+
+(def strike-a-la-fin [[2 3] [4 5] [10] [3 4] [5 5] [6 6] [7 7] [8 8] [9 9] [8 2 10]])
+
+(def all-strike [[10] [10] [10] [10] [10] [10] [10] [10] [10] [10 10 10]])
+
+(def in-middle-game [[3 4] [1 3] [6 0] [10] [] [] [] [] [] []])
+
+(facts "Check our bowling game score calculator"
+       (fact "only 0 pins down"                      (bow/score (only 0)) => 0)
+       (fact "only 1 pins down"                      (bow/score (only 1)) => 20)
+       (fact "only 1 pins down and 1 spare"          (bow/score spare-ex) => 29)
+       (fact "only 1 pins down and 1 strike"         (bow/score strike-ex) => 30)
+       (fact "all strike "                          (bow/score all-strike) => 300)
+       (fact "a score while in the middle of a game" (bow/score in-middle-game) => 27))
+
+
+(fact "Frame is finished ?"
+      (bow/frame-done? {:rolls  [] :id 1}) => false
+      (bow/frame-done? {:rolls  [1] :id 1}) => false
+      (bow/frame-done? {:rolls  [1 3] :id 1}) => true
+      (bow/frame-done? {:rolls  [] :id 10}) => false
+      (bow/frame-done? {:rolls  [1 2] :id 10}) => true
+      (bow/frame-done? {:rolls  [10] :id 9}) => true
+      (bow/frame-done? {:rolls  [10] :id 10}) => false
+      (bow/frame-done? {:rolls  [10 2] :id 10}) => true
+      (bow/frame-done? {:rolls  [8 2] :id 10}) => false
+      (bow/frame-done? {:rolls  [8 2 7] :id 10}) => true)
