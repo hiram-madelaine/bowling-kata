@@ -58,13 +58,13 @@
 (defui Game
   static om/IQuery
   (query [this]
-    [{:game (om/get-query Frame)} ])
+    [{:frames (om/get-query Frame)} ])
   Object
   (render [this]
-    (let [game (:game (om/props this))]
+    (let [game (:frames (om/props this))]
       (dom/div #js{}
                (dom/button #js {:onClick (fn [e]
-                                           (om/transact! this '[(game/roll) :game]))} "Roll the Ball !")
+                                           (om/transact! this '[(game/roll) :frames]))} "Roll the Ball !")
                (dom/div #js {}
                 (apply dom/div #js {:className "game"} (map frame game)))
                ))))
@@ -77,7 +77,7 @@
 
 (defmulti read om/dispatch)
 
-(defmethod read :game
+(defmethod read :frames
   [{:keys [state] :as env} key params]
   (let [st @state]
     (prn @state)
@@ -94,8 +94,8 @@
 
 (defn next-game
   [{:keys [round] :as state}]
-  (let [state (transform [:game ALL #(= round (:id %))] #(update-in % [:rolls] conj (rand-int 10)) state)]
-    (if (bow/frame-done? (select-one [:game ALL #(= round (:id %))] state))
+  (let [state (transform [:frames ALL #(= round (:id %))] #(update-in % [:rolls] conj (rand-int 10)) state)]
+    (if (bow/frame-done? (select-one [:frames ALL #(= round (:id %))] state))
          (transform [:round] inc state)
          state)))
 

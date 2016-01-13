@@ -8,12 +8,12 @@
                      [{:id           "dev"
                        :figwheel     true
                        :source-paths ["src"]
-                       :compiler     {:main       'bowling-kata.boot
-                                      :asset-path "js"
-                                      :output-to  "resources/public/js/main.js"
-                                      :output-dir "resources/public/js"
-                                      :verbose    true
-                                      :source-map-timestamp true }}
+                       :compiler     {:main                 'bowling-kata.boot
+                                      :asset-path           "js"
+                                      :output-to            "resources/public/js/main.js"
+                                      :output-dir           "resources/public/js"
+                                      :verbose              true
+                                      :source-map-timestamp true}}
                       {:id           "devcards"
                        :source-paths ["src"]
                        :figwheel     {:devcards true}       ;; <- note this
