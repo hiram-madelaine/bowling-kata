@@ -26,13 +26,6 @@
    (s/optional Pins "Second Roll")
    (s/optional Pins "Extra Ball")])
 
-(s/defschema Frame {:rolls FrameRolls
-                    :bonus Bonus
-                    :id    s/Int
-                    :score Score})
-
-(s/defschema Game {:frames                        [Frame]
-                   (s/optional-key :active-frame) s/Int})
 
 (s/defschema GameRolls "All rolls of the entire Game" [FrameRolls])
 
@@ -45,25 +38,25 @@
   "Special + that handle nil parameters."
   (fnil + 0 0 0))
 
-(def positive?
-  (fnil pos? -1))
+(def pins-down?
+  "At least one pin down"
+  (fnil pos? 0))
 
 (s/defn bonus :- Bonus
-  "Determine if frame has a bonus"
-  [rolls :- FrameRolls]
-  (let [[roll1 roll2] rolls]
-    (match [roll1 roll2 (add roll1 roll2)]
-           [10 _ _] :strike
-           [_ (_ :guard positive?) 10] :spare
-           :else nil)))
+  "Determine the bonus of any frame."
+  [[roll1 roll2] :- FrameRolls]
+  (match [roll1 roll2 (add roll1 roll2)]
+         [10 _ _] :strike
+         [_ (_ :guard pins-down?) 10] :spare
+         :else nil))
 
 (s/defn frame-score :- Score
   "The frame's score."
   [pins :- [Pins]]
   (let [[r1 r2 r3] pins]
-    (match [(bonus pins)]
-           [(:or :spare :strike)] (add r1 r2 r3)
-           :else (add r1 r2))))
+    (if (bonus pins)
+      (add r1 r2 r3)
+      (add r1 r2))))
 
 (def x-score
   "Transducer to compute all frames score."
@@ -89,6 +82,15 @@
 ;                                                |
 ;         UI API                                 |
 ;________________________________________________|
+
+(s/defschema Frame {:rolls FrameRolls
+                    :bonus Bonus
+                    :id    s/Int
+                    :score Score})
+
+(s/defschema Game {:frames                        [Frame]
+                   (s/optional-key :active-frame) s/Int})
+
 
 (s/defn frame-done?
   "2 rolls in the 9th first Frames

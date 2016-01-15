@@ -25,7 +25,7 @@
 ;         Component                              |
 ;________________________________________________|
 
-(defn display-rolls
+(defn display-bonus
   [rolls]
   (let [[r1 r2 r3] rolls]
     (condp = (bow/bonus rolls)
@@ -33,6 +33,13 @@
       :strike ["X" ""]
       rolls)))
 
+(defn display-empty
+  [rolls]
+  (let [[r1] rolls]
+    (condp = (count rolls)
+     0 ["_" "_"]
+     1 [r1 "_"]
+     rolls)))
 
 (defui Frame
   static om/Ident
@@ -44,7 +51,7 @@
   Object
   (render [this]
     (let [{:keys [id score rolls]} (om/props this)
-          rolls (display-rolls rolls)]
+          rolls (-> rolls display-bonus  display-empty)]
       (dom/div #js {:className "frame"}
                (dom/div #js {:className "header frame-item"} id)
                (apply dom/div #js {:className "rolls"}
@@ -66,8 +73,7 @@
                (dom/button #js {:onClick (fn [e]
                                            (om/transact! this '[(game/roll) :frames]))} "Roll the Ball !")
                (dom/div #js {}
-                (apply dom/div #js {:className "game"} (map frame game)))
-               ))))
+                (apply dom/div #js {:className "game"} (map frame game)))))))
 
 
 ;________________________________________________
@@ -80,7 +86,6 @@
 (defmethod read :frames
   [{:keys [state] :as env} key params]
   (let [st @state]
-    (prn @state)
     {:value (get st key)}))
 
 ;________________________________________________

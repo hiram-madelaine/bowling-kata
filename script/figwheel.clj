@@ -3,7 +3,7 @@
 
 (ra/start-figwheel!
   {:figwheel-options {:css-dirs ["resources/public/css"]}
-   :build-ids        ["dev" "devcards"]
+   :build-ids        ["devcards"]
    :all-builds
                      [{:id           "dev"
                        :figwheel     true
@@ -18,6 +18,7 @@
                        :source-paths ["src"]
                        :figwheel     {:devcards true}       ;; <- note this
                        :compiler     {:main                 'bowling-kata.cards
+                                      :parallel-build true
                                       :recompile-dependents true
                                       :asset-path           "js"
                                       :output-to            "resources/public/js/cards.js"

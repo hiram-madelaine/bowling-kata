@@ -8,6 +8,7 @@
             [bowling-kata.core :as bow]
             [schema.core :as s]
             [schema.test :refer [validate-schemas]]
+            [om.dom :as dom]
             [cljs.test :as test :refer-macros [is are testing use-fixtures]]))
 
 (enable-console-print!)
@@ -19,55 +20,209 @@
 
 (defcard-doc
   "##  Welcome to my Bowling Kata report
-   ### I will explain my way to solve this problem with my favorite libraries :
-   - Prismatic/schema to shape the domain model
-   - core.match to exprress business rules
-   - specter to manipulate the domain model
-   - Om.Next to visualise
-   - DevCards ")
+   ### The goal of the [Kata](https://github.com/jgrodziski/clojure-bowling-game) is to compute the score of a Bowling Game.
+
+   This Devcards exposes the way I explored and solve this problem.
+   In the process of solving this kata, I used some libraries I am familiar with, when needed :
+
+   - [Prismatic/schema](https://github.com/plumatic/schema) to shape the domain model and validation
+   - [core.match](https://github.com/clojure/core.match) to express business rules
+   - [specter](https://github.com/nathanmarz/specter) to manipulate the domain model
+   - [Om.Next](https://github.com/omcljs/om) for visualization and interactivity
+   - [DevCards](https://github.com/bhauman/devcards) to explore, try, test, explain...
+
+
+   I spent two hours to come up with a scoring solution, tests included,
+   and 3 hours for the scoring simulation using OmNext.
+   The solutions are certainly not the best neither the shortest but code golf was not a goal.
+   I tried to write maintainable code")
+(defcard-doc
+  "## The problem
+  The game consists of **10 frames**. In each frame the player has
+  two opportunities to knock down **10 pins**. The **score** for the frame is the total
+  number of pins knocked down, plus bonuses for strikes and spares.
+
+
+  A **spare** is when the player knocks down all 10 pins in two tries. The **bonus** for that frame is the number of pins knocked down by the next roll. ‘/’ denote a spare in the score sheet.
+  A **strike** is when the player knocks down all 10 pins on his first try. The **bonus** for that frame is the value of the next two balls rolled. ‘X’ denote a striker in the score sheet.
+
+  In the **tenth frame** a player who rolls a spare or strike is allowed to roll the **extra balls** to complete the frame (so 3 balls can be rolled in tenth frame).\n")
+
+(defcard-doc
+  "## The model
+  I use Prismatic/schema to shape the domain model and capture simple constraints.
+
+   - We only deal with a maximum of 10 pins, so Int is good."
+  (mkdn-pprint-source bow/Pins)
+  "- The rolls for a frame, must be kept in order and grow on the right-end side. So a vector of Pins is a good choice."
+  (mkdn-pprint-source bow/FrameRolls)
+  "- A frame may have a bonus : spare or strike"
+  (mkdn-pprint-source bow/Bonus)
+
+  "- The score range from 0 to 300 for a perfect game."
+  (mkdn-pprint-source bow/Score)
+
+  #_(mkdn-pprint-source bow/Game))
+
 
 
 (defcard-doc
-  "### The model
-  I use Prismatic/schema to shape the domain model and constraints.
-  The 10nth frame is very particular and breaks nice properties of the 9 first.
-  I think the best way to model this problem is to have an extra Frame with one roll."
-  (mkdn-pprint-source bow/Pins)
-  "- The rolls for a frame"
-  (mkdn-pprint-source bow/FrameRolls)
+  "## Determine the bonus of a Frame.
 
-  (mkdn-pprint-source bow/Bonus)
+  As the scoring depends on the bonus of a frame, my first task was to determine if a frame benefits form a bonus.
+  My goal is to give the final score but also the score of an ongoing game.
+  The determination of the bonus must be handle an uncomplete frame.
 
-  (mkdn-pprint-source bow/Frame)
-
-  (mkdn-pprint-source bow/Game))
+  ### The rules :
+  - if we take down 10 **pins** in the first *roll* then it is a **strike**
+  - else if we knock down the 10 pins during the second roll then it is a **spare**
 
 
+  When it comes to rule implementation,
+   I like the conciseness of core.match that presents the logic in a manner that could be validated by an expert."
+  (mkdn-pprint-source bow/bonus)
 
-(deftest test-score-per-frame
-         (testing "Testing score per frame in isolation of other frames"
-           (is (= 7 (bow/frame-score [7])) "Score with one rolls")
-           (is (= 9 (bow/frame-score [7 2])) "Score with two rolls")
-           (is (= 10 (bow/frame-score [10])) "Score with one strike")
-           (is (= 10 (bow/frame-score [8 2])) "Score with one spare")
-           (is (= 20 (bow/frame-score [9 1 10])) "Score with 3 rolls")))
+  "#### How to deal with nil value without too much cluttering the code
+
+  In the bonus function, I had to deal with uncomplete frame and so roll1 and/or roll2 could be nil.
+  The functions `+` and `pos?` break with nil parameters.
+  I used the `fnil` function to handle this cases : "
+
+  (mkdn-pprint-source bow/add)
+  (mkdn-pprint-source bow/pins-down?))
+
 
 
 (deftest test-bonus
-         (testing "Testing the determination of a bonus"
-           (is (= nil (bow/bonus [1 2])))
-           (is (= :spare (bow/bonus [8 2])))
-           (is (= :strike (bow/bonus [10])))))
+         (testing "let's test the bonus function"
+           (is (= nil (bow/bonus [])) "Start of a frame")
+           (is (= nil (bow/bonus [2])) "First roll with no strike")
+           (is (= nil (bow/bonus [1 2])) "Complete frame with no bonus")
+           (is (= :spare (bow/bonus [8 2])) "Complete frame with spare")
+           (is (= :strike (bow/bonus [10])) "Complete frame with strike")
+           (is (= :strike (bow/bonus [10 10])) "Uncomplete 10nth frame with double strike")
+           (is (= :strike (bow/bonus [10 10 7])) "Complete 10nth frame")
+           (is (= :spare  (bow/bonus [8 2 7])) "Compelete 10nth frame with spare")))
+
+
+(defcard-doc "## Compute the score
+ The scoring of a frame is special because in case of a bonus you must wait for the result of the next roll(s) :
+
+
+ - **Strike** : When all ten pins are knocked down with the first ball, a player is awarded ten points,
+ plus a bonus of whatever is scored with the next two balls.
+ - **spare** : When no pins are left standing after the second ball of a frame, a player is awarded ten points, plus a bonus of whatever is scored with the next ball
+
+
+ In both cases, to score a frame, we have to take in account at most 3 rolls.
+ This is the purpose of the function `frame-score` : it takes a vector of three rolls. (possibly coming from the next frame(s)
+ but for the time being this detail is out of concern.)"
+             (mkdn-pprint-source bow/frame-score))
+
+
+(deftest test-score-per-frame
+         "### Let's put `frame-score`to the test"
+         (testing "In order to compute an on-going game I have to score a frame in isolation and handle various cases. "
+           (is (= 0 (bow/frame-score [])) "Frame with no roll")
+           (is (= 7 (bow/frame-score [7])) "Frame with one roll")
+           (is (= 9 (bow/frame-score [7 2])) "Frame with two rolls")
+           (is (= 10 (bow/frame-score [10])) "Frame with one strike")
+           (is (= 10 (bow/frame-score [8 2])) "Frame with one spare")
+           (is (= 20 (bow/frame-score [9 1 10])) "10th Frame with 3 rolls")))
+
+
+(defcard-doc "## Now that `frame-score` is correct, let's feed the function with all the rolls it needs
+
+
+How many frames do we need in order to compute the score of one frame ?
+
+
+In the case of a strike, with need the next two rolls, and if the next two rolls are also strikes we possibly need the next two frames.
+So the rolls of the frame-score function need the rolls of the current frame plus next 2 frames. So we must group the frames by 3.
+
+
+The partition functions are a perfect fit for this job :
+
+- We will use `partition-all` because obviously we do not want to drop frames ;
+- we deduced we have to group frames by 3 ;
+- and have a `step` of 1 because we want the next two frames of each frame.
+```clojure
+(partition-all 3 1 [[8 1] [9 1] [10] [10] [8 1] [7 2] [10] [10] [10] [8 2 9]])
+```
+=>"
+
+
+             (partition-all 3 1 [[8 1] [9 1] [10] [10] [8 1] [7 2] [10] [10] [10] [8 2 9]])
+
+             "Not bad for just one function !
+
+             We have still several minor steps and we are good :
+
+             - flatten the result of each partition
+             - keep only three rolls
+             - apply frame-score on each
+             "
+             "Starting form the last result, let's see each step of this transducer :
+
+             - `(map flatten)` =>"
+
+
+             (->> [[8 1] [9 1] [10] [10] [8 1] [7 2] [10] [10] [10] [8 2 9]]
+                  (partition-all 3 1)
+                  (map flatten))
+
+             "- this step is optional because frame-score is interested only n the three first elements
+             `(map #(take 3 %))` => "
+             (->> [[8 1] [9 1] [10] [10] [8 1] [7 2] [10] [10] [10] [8 2 9]]
+                  (partition-all 3 1)
+                  (map flatten)
+                  (map #(take 3 %)))
+
+             "- `(map frame-score)` =>"
+
+             (->> [[8 1] [9 1] [10] [10] [8 1] [7 2] [10] [10] [10] [8 2 9]]
+                  (partition-all 3 1)
+                  (map flatten)
+                  (map #(take 3 %))
+                  (map bow/frame-score))
+             "These steps can be combined in a transducers : "
+             (mkdn-pprint-source bow/x-score)
+
+             "As partition-by with a step can not be included in the transducer I came up with this function : "
+             (mkdn-pprint-source bow/scores)
+
+             (bow/scores [[8 1] [9 1] [10] [10] [8 1] [7 2] [10] [10] [10] [8 2 9]]))
 
 
 (deftest test-scores
          (testing "Scoring of all frames - Scores are cumulatives"
            (is (= [9] (bow/scores [[8 1]])) "Score of starting game")
-           (is (= [9 19] (bow/scores [[8 1] [9 1]])) "On going match")
+           (is (= [9 19] (bow/scores [[8 1] [9 1]])) "Ongoing match")
            (is (= [9 29 39] (bow/scores [[8 1] [9 1] [10]])))
            (is (= [14 19 24] (bow/scores [[8 2] [4 1] [4 1]])) "First frame is a spare")
            (is (= [15 20 25] (bow/scores [[10] [4 1] [4 1]])) "First frame is a strike")))
 
+
+(defcard empty-frame
+         "Empty Frame"
+         (let [frame {:id 1
+                      :rolls []
+                      :score 0}]
+           (ui/frame frame)))
+
+(defcard frame-one-roll
+         "Frame with one roll"
+         (let [frame {:id 1
+                      :rolls [5]
+                      :score 5}]
+           (ui/frame frame)))
+
+(defcard frame-without-bonus
+         "Frame complete without bonus"
+         (let [frame {:rolls [8 1]
+                      :id 3
+                      :score 19}]
+           (ui/frame frame)))
 
 (defcard frame-with-spare
          "Frame with spare bonus"
@@ -83,21 +238,20 @@
                       :score 29}]
            (ui/frame frame)))
 
-(defcard frame-without-bonus
-         "Frame with spare bonus"
-         (let [frame {:rolls [8 1]
-                      :id 3
-                      :score 19}]
-           (ui/frame frame)))
 
-
-(defcard tenieth-frame
-         "Extra ball"
+(defcard tenth-frame
+         "Tenth frame with spare and Extra ball"
          (let [frame {:rolls [8 2 10]
                       :id 10
                       :score 19}]
            (ui/frame frame)))
 
+(defcard tenth-frame
+         "FIX ME ! Tenth frame with strike and Extra ball"
+         (let [frame {:rolls [10 10 10]
+                      :id 10
+                      :score 19}]
+           (ui/frame frame)))
 
 (deftest frame-is-done?
          "## Test if a frame is done or not
