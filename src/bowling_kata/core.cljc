@@ -8,7 +8,7 @@
 ;         Schemas                                |
 ;________________________________________________|
 
-(s/defschema Pins
+(s/defschema Roll
   "The number of pin's knock down for a roll."
   (s/constrained s/Int #(<= 0 % 10) "At most, ten pins can be knocked down."))
 
@@ -22,9 +22,9 @@
 (s/defschema FrameRolls
   "In a frame there can be from 1 to 3 rolls.
   One Roll (strike) to three Rolls on the 10nth Frame"
-  [(s/one Pins "First Roll")
-   (s/optional Pins "Second Roll")
-   (s/optional Pins "Extra Ball")])
+  [(s/one Roll "First Roll")
+   (s/optional Roll "Second Roll")
+   (s/optional Roll "Extra Ball")])
 
 
 (s/defschema GameRolls "All rolls of the entire Game" [FrameRolls])
@@ -52,16 +52,16 @@
 
 (s/defn frame-score :- Score
   "The frame's score."
-  [pins :- [Pins]]
-  (let [[r1 r2 r3] pins]
-    (if (bonus pins)
+  [rolls :- [Roll]]
+  (let [[r1 r2 r3] rolls]
+    (if (bonus rolls)
       (add r1 r2 r3)
       (add r1 r2))))
 
 (s/defn scores :- [Score]
   "Cumulative score for all frames"
-  [all-pins :- GameRolls]
-  (->> all-pins
+  [all-rolls :- GameRolls]
+  (->> all-rolls
        (partition-all 3 1)
        (map flatten)
        (map frame-score)

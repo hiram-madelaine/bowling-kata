@@ -53,7 +53,7 @@
   I use Prismatic/schema to shape the domain model and capture simple constraints.
 
    - We only deal with a maximum of 10 pins, so Int is good."
-  (mkdn-pprint-source bow/Pins)
+  (mkdn-pprint-source bow/Roll)
   "- The rolls for a frame, must be kept in order and grow on the right-end side. So a vector of Pins is a good choice."
   (mkdn-pprint-source bow/FrameRolls)
   "- A frame may have a bonus : spare or strike"
