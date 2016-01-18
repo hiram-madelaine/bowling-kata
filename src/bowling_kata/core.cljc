@@ -58,25 +58,19 @@
       (add r1 r2 r3)
       (add r1 r2))))
 
-(def x-score
-  "Transducer to compute all frames score."
-  (comp (map flatten)
-        (map #(take 3 %))
-        (map frame-score)))
-
-
 (s/defn scores :- [Score]
   "Cumulative score for all frames"
   [all-pins :- GameRolls]
   (->> all-pins
-       (partition-all 3 1) ; This arity can not ne included in the transducer
-       (into [] x-score)
+       (partition-all 3 1)
+       (map flatten)
+       (map frame-score)
        (reductions +)))
+
 
 (s/defn score :- Score
   [all-rolls :- GameRolls]
-  (nth (scores all-rolls) 9))
-
+  (last (reductions + (scores all-rolls))))
 
 ;________________________________________________
 ;                                                |
@@ -89,33 +83,32 @@
                     :score Score})
 
 (s/defschema Game {:frames                        [Frame]
-                   (s/optional-key :active-frame) s/Int})
+                   (s/optional-key :round) s/Int})
 
 
 (s/defn frame-done?
   "2 rolls in the 9th first Frames
-  2 rolls in the 10th Frame if no bonus."
-  [{:keys [rolls id] :as frame} :- Frame]
+   2 rolls in the 10th Frame if no bonus."
+  [{:keys [rolls id]} :- Frame]
   (match [(bonus rolls) id (count rolls)]
          [(:or :strike :spare) (_ :guard #(< % 10)) _] true
          [(:or :strike :spare) 10 3] true
          [nil _ 2] true
          :else false))
 
-(s/defn ->game :- Game
-  [all-rolls :- GameRolls]
-  (->> all-rolls
-       (map-indexed
-             (fn [i rolls]
-               (assoc {} :rolls rolls
-                         :id (inc i)
-                         :bonus (bonus rolls))))
-       (map (fn [score frame]
-              (assoc frame :score score)) (scores all-rolls))
-       (assoc {} :frames)))
-
-(s/defn ->all-rolls :- GameRolls
+(s/defn all-rolls :- GameRolls
   [game :- Game]
   (->> game
        :frames
        (mapv :rolls)))
+
+(s/defn update-score :- Game
+  "Update the game with the score for past and current frame."
+  [{:keys [round frames] :as game} :- Game]
+  (let [all-scores (->> game all-rolls scores)
+        frames (map-indexed (fn [i f]
+                              (if (<= i (dec round))
+                                (assoc f :score (nth all-scores i))
+                                f)) frames)]
+    {:round  round
+     :frames frames}))

@@ -159,7 +159,6 @@ The partition functions are a perfect fit for this job :
              We have still several minor steps and we are good :
 
              - flatten the result of each partition
-             - keep only three rolls
              - apply frame-score on each
              "
              "Starting form the last result, let's see each step of this transducer :
@@ -171,13 +170,6 @@ The partition functions are a perfect fit for this job :
                   (partition-all 3 1)
                   (map flatten))
 
-             "- this step is optional because frame-score is interested only n the three first elements
-             `(map #(take 3 %))` => "
-             (->> [[8 1] [9 1] [10] [10] [8 1] [7 2] [10] [10] [10] [8 2 9]]
-                  (partition-all 3 1)
-                  (map flatten)
-                  (map #(take 3 %)))
-
              "- `(map frame-score)` =>"
 
              (->> [[8 1] [9 1] [10] [10] [8 1] [7 2] [10] [10] [10] [8 2 9]]
@@ -185,10 +177,8 @@ The partition functions are a perfect fit for this job :
                   (map flatten)
                   (map #(take 3 %))
                   (map bow/frame-score))
-             "These steps can be combined in a transducers : "
-             (mkdn-pprint-source bow/x-score)
 
-             "As partition-by with a step can not be included in the transducer I came up with this function : "
+             "The complete scoring function  : "
              (mkdn-pprint-source bow/scores)
 
              (bow/scores [[8 1] [9 1] [10] [10] [8 1] [7 2] [10] [10] [10] [8 2 9]]))
@@ -197,46 +187,72 @@ The partition functions are a perfect fit for this job :
 (deftest test-scores
          (testing "Scoring of all frames - Scores are cumulatives"
            (is (= [9] (bow/scores [[8 1]])) "Score of starting game")
+           (is (= (bow/scores [[8 1] [] [] [] [] [] [] [] [] []]) [9 9 9 9 9 9 9 9 9 9]) "Score of starting game with reductions")
            (is (= [9 19] (bow/scores [[8 1] [9 1]])) "Ongoing match")
            (is (= [9 29 39] (bow/scores [[8 1] [9 1] [10]])))
            (is (= [14 19 24] (bow/scores [[8 2] [4 1] [4 1]])) "First frame is a spare")
            (is (= [15 20 25] (bow/scores [[10] [4 1] [4 1]])) "First frame is a strike")))
 
+(defcard-doc "## The UI ! ")
+
+
+
+(deftest test-frame-view
+         (testing "The representation of a frame"
+           (is (= (ui/display-empty []) ["_" "_"]))
+           (is (= (ui/display-empty [1]) [1 "_"]))
+           (is (= (ui/display-empty [1 2]) [1 2]))
+           (is (= (ui/display-empty [10 10 10]) [10 10 10]))
+           (is (= (ui/display-empty ["X" ""]) ["X" ""]))
+           (is (= (ui/display-empty ["8" "/"]) ["8" "/"]))))
+
+
+(deftest test-frame-bonus
+         (testing "Correct display of frame with bonus"
+           (is (= (ui/display-bonus []) []) "Leave empty frame intact")
+           (is (= (ui/display-bonus [9]) [9]) "Leave one roll no bonus intact")
+           (is (= (ui/display-bonus [8 1]) [8 1]) "Leave intact frame with no bonus")
+           (is (= (ui/display-bonus [8 2]) [8 "/"]) "Spare")
+           (is (= (ui/display-bonus [0 10]) [0 "/"]) "Spare not strike")
+           (is (= (ui/display-bonus [8 2 8]) [8 "/" 8]) "Spare tenth frame")
+           (is (= (ui/display-bonus [8 2 10]) [8 "/" "X"]) "Spare strike tenth frame")
+           (is (= (ui/display-bonus [10]) ["X" ""]) "Strike")
+           (is (= (ui/display-bonus [10 10 10]) ["X" "X" "X"]))))
 
 (defcard empty-frame
          "Empty Frame"
          (let [frame {:id 1
                       :rolls []
                       :score 0}]
-           (ui/frame frame)))
+           (ui/frame-view frame)))
 
 (defcard frame-one-roll
          "Frame with one roll"
          (let [frame {:id 1
                       :rolls [5]
                       :score 5}]
-           (ui/frame frame)))
+           (ui/frame-view frame)))
 
 (defcard frame-without-bonus
          "Frame complete without bonus"
          (let [frame {:rolls [8 1]
                       :id 3
                       :score 19}]
-           (ui/frame frame)))
+           (ui/frame-view frame)))
 
 (defcard frame-with-spare
          "Frame with spare bonus"
          (let [frame {:id 1
                       :rolls [8 2]
                       :score 10}]
-           (ui/frame frame)))
+           (ui/frame-view frame)))
 
 (defcard frame-with-strike
          "Frame with strike bonus"
          (let [frame {:rolls [10]
                       :id 2
                       :score 29}]
-           (ui/frame frame)))
+           (ui/frame-view frame)))
 
 
 (defcard tenth-frame
@@ -244,14 +260,14 @@ The partition functions are a perfect fit for this job :
          (let [frame {:rolls [8 2 10]
                       :id 10
                       :score 19}]
-           (ui/frame frame)))
+           (ui/frame-view frame)))
 
 (defcard tenth-frame
          "FIX ME ! Tenth frame with strike and Extra ball"
          (let [frame {:rolls [10 10 10]
                       :id 10
                       :score 19}]
-           (ui/frame frame)))
+           (ui/frame-view frame)))
 
 (deftest frame-is-done?
          "## Test if a frame is done or not

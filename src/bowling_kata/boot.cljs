@@ -5,15 +5,18 @@
             [om.dom :as dom]
             [clojure.string :as str]
             [cljs.pprint :refer [pprint] :as pp]
-            [com.rpl.specter :as spec :refer [transform select FIRST LAST ALL comp-paths select-one] :include-macros true]))
+            [com.rpl.specter :as spec :refer [transform select FIRST LAST ALL comp-paths select-one] :include-macros true]
+            [cljs.core.match :refer-macros [match]]
+            [schema.core :as s :include-macros true]))
 
 (enable-console-print!)
 
-(def empty-game (merge {:round 1} (bow/->game (repeat 10 []))))
-(def state empty-game
-  #_(bow/->game [[8 1] [9 1] [10] [10] [8 1] [7 2] [10] [10] [10] [8 2 9]]))
-
-
+(def state (merge {:round  1
+                        :frames (for [n (range 1 11)]
+                                  {:rolls []
+                                   :id    n
+                                   :bonus nil
+                                   :score 0})}))
 
 (defn second-roll []
   (let [r1 (rand-int 10)
@@ -27,10 +30,10 @@
 
 (defn display-bonus
   [rolls]
-  (let [[r1 r2 r3] rolls]
+  (let [rolls (->> rolls (mapv #(get {10 "X"} % %)))
+        [r1 r2 r3] rolls]
     (condp = (bow/bonus rolls)
       :spare (if r3 [r1 "/" r3] [r1 "/"])
-      :strike ["X" ""]
       rolls)))
 
 (defn display-empty
@@ -41,7 +44,12 @@
      1 [r1 "_"]
      rolls)))
 
-(defui Frame
+#_(s/defn frame-display
+  [{:keys [id score rolls] :as frame}  :- bow/Frame]
+  (match [id (bow/bonus rolls) (count rolls)]
+         [10 :strike _]))
+
+(defui FrameView
   static om/Ident
   (ident [this props]
     [:frame/by-id (:id props)])
@@ -60,12 +68,12 @@
                (dom/div #js {:className "frame-item"}
                  (dom/div #js {:className ""} score))))))
 
-(def frame (om/factory Frame))
+(def frame-view (om/factory FrameView))
 
 (defui Game
   static om/IQuery
   (query [this]
-    [{:frames (om/get-query Frame)} ])
+    [{:frames (om/get-query FrameView)} ])
   Object
   (render [this]
     (let [game (:frames (om/props this))]
@@ -73,7 +81,7 @@
                (dom/button #js {:onClick (fn [e]
                                            (om/transact! this '[(game/roll) :frames]))} "Roll the Ball !")
                (dom/div #js {}
-                (apply dom/div #js {:className "game"} (map frame game)))))))
+                        (apply dom/div #js {:className "game"} (map frame-view game)))))))
 
 
 ;________________________________________________
@@ -95,18 +103,34 @@
 
 (defmulti mutate om/dispatch)
 
+(defn next-roll
+  "Simulate the next roll given the previous roll.
+  Does not take into account the tenth frame."
+  [rolls]
+  (let [pins (apply + rolls)
+        left (- 10 pins)
+        next (rand-int (inc left))] ;too easy to do a spare when 9 or 8
+    (conj rolls next)))
 
+(s/defn update-round :- Game
+  "Update the round if the frame is done."
+  [{:keys [round] :as game} :- Game ]
+  (if (bow/frame-done? (select-one [:frames ALL #(= round (:id %))] game))
+    (transform [:round] inc game)
+    game))
 
-(defn next-game
-  [{:keys [round] :as state}]
-  (let [state (transform [:frames ALL #(= round (:id %))] #(update-in % [:rolls] conj (rand-int 10)) state)]
-    (if (bow/frame-done? (select-one [:frames ALL #(= round (:id %))] state))
-         (transform [:round] inc state)
-         state)))
+(s/defn next-game :- bow/Game
+  [{:keys [round] :as game} :- Game
+   next-fn]
+  (->> game
+       (transform [:frames ALL #(= round (:id %))]
+                  #(update-in % [:rolls] next-fn))
+       bow/update-score
+       update-round))
 
 (defmethod mutate 'game/roll
   [{:keys [state] :as env} key params]
-  {:action #(swap! state next-game)})
+  {:action #(swap! state next-game next-roll)})
 
 ;________________________________________________
 ;                                                |

@@ -43,7 +43,7 @@
 (fact "round trip all-rolls<->game"
       (-> all-rolls
           bow/->game
-          bow/->all-rolls) => all-rolls)
+          bow/all-rolls) => all-rolls)
 
 
 (defn only [pins-down]
