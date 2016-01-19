@@ -11,12 +11,14 @@
 
 (enable-console-print!)
 
-(def state (merge {:round  1
+(def empty-state (merge {:round  1
                         :frames (for [n (range 1 11)]
                                   {:rolls []
                                    :id    n
                                    :bonus nil
                                    :score 0})}))
+
+(def state (atom empty-state))
 
 (defn second-roll []
   (let [r1 (rand-int 10)
@@ -44,10 +46,11 @@
      1 [r1 "_"]
      rolls)))
 
-#_(s/defn frame-display
+(s/defn frame-display
   [{:keys [id score rolls] :as frame}  :- bow/Frame]
-  (match [id (bow/bonus rolls) (count rolls)]
-         [10 :strike _]))
+  (let [[r1 r2 r3] rolls]
+    (match [id (bow/bonus rolls) (count rolls)]
+          [10 :strike _] ["X" ])))
 
 (defui FrameView
   static om/Ident
@@ -80,6 +83,8 @@
       (dom/div #js{}
                (dom/button #js {:onClick (fn [e]
                                            (om/transact! this '[(game/roll) :frames]))} "Roll the Ball !")
+               (dom/button #js {:onClick (fn [e]
+                                           (om/transact! this '[(game/reset) :frames]))} "Reset the game !")
                (dom/div #js {}
                         (apply dom/div #js {:className "game"} (map frame-view game)))))))
 
@@ -131,6 +136,10 @@
 (defmethod mutate 'game/roll
   [{:keys [state] :as env} key params]
   {:action #(swap! state next-game next-roll)})
+
+(defmethod mutate 'game/reset
+  [{:keys [state] :as env} key params]
+  {:action #(reset! state empty-state)})
 
 ;________________________________________________
 ;                                                |

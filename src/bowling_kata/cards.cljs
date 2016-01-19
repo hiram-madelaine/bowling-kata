@@ -19,8 +19,8 @@
 
 
 (defcard-doc
-  "##  Welcome to my Bowling Kata report
-   ### The goal of the [Kata](https://github.com/jgrodziski/clojure-bowling-game) is to compute the score of a Bowling Game.
+  "##  Welcome to my [Bowling Kata](https://github.com/jgrodziski/clojure-bowling-game) report
+   ### The goal of the Kata is to compute the score of a Bowling Game.
 
    This Devcards exposes the way I explored and solve this problem.
    In the process of solving this kata, I used some libraries I am familiar with, when needed :
@@ -29,6 +29,7 @@
    - [core.match](https://github.com/clojure/core.match) to express business rules
    - [specter](https://github.com/nathanmarz/specter) to manipulate the domain model
    - [Om.Next](https://github.com/omcljs/om) for visualization and interactivity
+   - CSS Flexbox for positioning.
    - [DevCards](https://github.com/bhauman/devcards) to explore, try, test, explain...
 
 
@@ -193,9 +194,44 @@ The partition functions are a perfect fit for this job :
            (is (= [14 19 24] (bow/scores [[8 2] [4 1] [4 1]])) "First frame is a spare")
            (is (= [15 20 25] (bow/scores [[10] [4 1] [4 1]])) "First frame is a strike")))
 
-(defcard-doc "## The UI ! ")
+(defcard-doc "## The UI !
+The computation of the score was fun but it is only one aspect of a project.
+My idea was to pursue this Kata with a visual simulation because it gives a dynamic aspect of the computation.
+
+My addition to the initial Kata :
+
+ - Give a visual representation of a Bowling Score board
+ - Simulate the progression of a game")
+
+(defcard-doc "## The power of unit visualization
+It is hard to understand the power of Devcards if you don't try it for yourself.
+One of the killer feature is to be able to visualize components in different states and in isolation.
+It is a first step towards a visualisation test. (The validation is visual.)
 
 
+Before Devcards, I used to start with the big picture, using the whole state. but now I concentrate on smaller pieces one at a time.
+")
+
+(defcard-doc "### The Frame component
+
+My first UI task was to represent a single Frame. Even if it begs to use table, I was confident that I could use Flexbox with a minimum amount of tags and style.")
+
+(defcard frame-without-bonus
+         "Frame complete without bonus"
+         (let [frame {:rolls [8 1]
+                      :id 3
+                      :score 19}]
+           (ui/frame-view frame)))
+
+(defcard-doc "Now that I am pleased with the look, I had to display the different states of a frame :
+
+- empty
+- ongoing
+- strike
+- spare
+- tenth frame...
+
+As the UI is a funciton of the state, I just have to write a function that transform the state to a ui state.")
 
 (deftest test-frame-view
          (testing "The representation of a frame"
@@ -219,12 +255,7 @@ The partition functions are a perfect fit for this job :
            (is (= (ui/display-bonus [10]) ["X" ""]) "Strike")
            (is (= (ui/display-bonus [10 10 10]) ["X" "X" "X"]))))
 
-(defcard empty-frame
-         "Empty Frame"
-         (let [frame {:id 1
-                      :rolls []
-                      :score 0}]
-           (ui/frame-view frame)))
+
 
 (defcard frame-one-roll
          "Frame with one roll"
@@ -233,12 +264,6 @@ The partition functions are a perfect fit for this job :
                       :score 5}]
            (ui/frame-view frame)))
 
-(defcard frame-without-bonus
-         "Frame complete without bonus"
-         (let [frame {:rolls [8 1]
-                      :id 3
-                      :score 19}]
-           (ui/frame-view frame)))
 
 (defcard frame-with-spare
          "Frame with spare bonus"
