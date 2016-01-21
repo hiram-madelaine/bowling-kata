@@ -9,6 +9,7 @@
             [schema.core :as s]
             [schema.test :refer [validate-schemas]]
             [om.dom :as dom]
+            [om.next :as om :refer-macros [defui]]
             [cljs.test :as test :refer-macros [is are testing use-fixtures]]))
 
 (enable-console-print!)
@@ -23,7 +24,8 @@
    ### The goal of the Kata is to compute the score of a Bowling Game.
 
    This Devcards exposes the way I explored and solve this problem.
-   In the process of solving this kata, I used some libraries I am familiar with, when needed :
+   In the process of solving this kata, I used some techniques inspired by [DDD](https://domainlanguage.com/ddd/) and
+   libraries I am familiar with, when needed :
 
    - [Prismatic/schema](https://github.com/plumatic/schema) to shape the domain model and validation
    - [core.match](https://github.com/clojure/core.match) to express business rules
@@ -34,26 +36,30 @@
 
 
    I spent two hours to come up with a scoring solution, tests included,
-   and 3 hours for the scoring simulation using OmNext.
+   and 5 hours for the scoring simulation using OmNext.
    The solutions are certainly not the best neither the shortest but code golf was not a goal.
-   I tried to write maintainable code")
+   I try to write maintainable code")
 (defcard-doc
   "## The problem
   The game consists of **10 frames**. In each frame the player has
-  two opportunities to knock down **10 pins**. The **score** for the frame is the total
+  **two** opportunities to **knock down** **10 pins**. The **score** for the frame is the total
   number of pins knocked down, plus bonuses for strikes and spares.
 
 
   A **spare** is when the player knocks down all 10 pins in two tries. The **bonus** for that frame is the number of pins knocked down by the next roll. ‘/’ denote a spare in the score sheet.
   A **strike** is when the player knocks down all 10 pins on his first try. The **bonus** for that frame is the value of the next two balls rolled. ‘X’ denote a striker in the score sheet.
 
-  In the **tenth frame** a player who rolls a spare or strike is allowed to roll the **extra balls** to complete the frame (so 3 balls can be rolled in tenth frame).\n")
+  In the **tenth frame** a player who rolls a spare or strike is allowed to roll the **extra balls** to complete the frame (so **3 balls** can be rolled in **tenth frame**).\n")
 
 (defcard-doc
   "## The model
-  I use Prismatic/schema to shape the domain model and capture simple constraints.
 
-   - We only deal with a maximum of 10 pins, so Int is good."
+  As a huge fan of **DDD**, I always spend a lot of time studying the vocabulary of the problem.
+  I use Prismatic/schema to capture the langage of the domain and shape the entities.
+  I change the names until I am satisfied with the meaning.
+  The names of the Schema are Ubiquitous in the source code, this is very important to me, because when you write Clojure in the large it is important for maintenance.
+
+   - Naming the number of pins knocked down in a roll gave me a hard time. I tried `Pins` and `Pin` but went back to `Roll`. We only deal with a maximum of 10 pins, so Int is good."
   (mkdn-pprint-source bow/Roll)
   "- The rolls for a frame, must be kept in order and grow on the right-end side. So a vector of Pins is a good choice."
   (mkdn-pprint-source bow/FrameRolls)
@@ -75,8 +81,8 @@
   The determination of the bonus must be handle an uncomplete frame.
 
   ### The rules :
-  - if we take down 10 **pins** in the first *roll* then it is a **strike**
-  - else if we knock down the 10 pins during the second roll then it is a **spare**
+  - **Strike** : When all **ten pins** are knocked down with the **first ball**, a player is awarded ten points, plus a bonus of whatever is scored with the **next two balls**.
+  - **spare** : When no pins are left standing after the **second ball** of a frame, a player is awarded ten points, plus a bonus of whatever is scored with **the next ball**
 
 
   When it comes to rule implementation,
@@ -111,11 +117,11 @@
 
 
  - **Strike** : When all ten pins are knocked down with the first ball, a player is awarded ten points,
- plus a bonus of whatever is scored with the next two balls.
- - **spare** : When no pins are left standing after the second ball of a frame, a player is awarded ten points, plus a bonus of whatever is scored with the next ball
+ plus a bonus of whatever is scored with the **next two balls**.
+ - **spare** : When no pins are left standing after the second ball of a frame, a player is awarded ten points, plus a bonus of whatever is scored with **the next ball**
 
 
- In both cases, to score a frame, we have to take in account at most 3 rolls.
+ In both cases, to score a frame, we have to take in account at most **3 rolls**.
  This is the purpose of the function `frame-score` : it takes a vector of three rolls. (possibly coming from the next frame(s)
  but for the time being this detail is out of concern.)"
              (mkdn-pprint-source bow/frame-score))
@@ -138,7 +144,7 @@
 How many frames do we need in order to compute the score of one frame ?
 
 
-In the case of a strike, with need the next two rolls, and if the next two rolls are also strikes we possibly need the next two frames.
+In the case of a **strike**, with need the **next two rolls**, and if the next two rolls are also strikes we possibly need the next two frames.
 So the rolls of the frame-score function need the rolls of the current frame plus next 2 frames. So we must group the frames by 3.
 
 
@@ -155,14 +161,15 @@ The partition functions are a perfect fit for this job :
 
              (partition-all 3 1 [[8 1] [9 1] [10] [10] [8 1] [7 2] [10] [10] [10] [8 2 9]])
 
-             "Not bad for just one function !
+             "Not bad for just one function available in clojure.core !
 
              We have still several minor steps and we are good :
 
              - flatten the result of each partition
              - apply frame-score on each
+             - accumalate the scores
              "
-             "Starting form the last result, let's see each step of this transducer :
+             "Starting form the last result, let's see each step :
 
              - `(map flatten)` =>"
 
@@ -179,10 +186,13 @@ The partition functions are a perfect fit for this job :
                   (map #(take 3 %))
                   (map bow/frame-score))
 
+             "- We have the score for each frame but the board shows that score is accumulating, this is a job for reduce.
+             But reduce will give us the final score, we need the intermediate steps, that's exactly what reductions does."
+
              "The complete scoring function  : "
              (mkdn-pprint-source bow/scores)
-
-             (bow/scores [[8 1] [9 1] [10] [10] [8 1] [7 2] [10] [10] [10] [8 2 9]]))
+             (bow/scores [[8 1] [9 1] [10] [10] [8 1] [7 2] [10] [10] [10] [8 2 9]])
+             )
 
 
 (deftest test-scores
@@ -194,7 +204,7 @@ The partition functions are a perfect fit for this job :
            (is (= [14 19 24] (bow/scores [[8 2] [4 1] [4 1]])) "First frame is a spare")
            (is (= [15 20 25] (bow/scores [[10] [4 1] [4 1]])) "First frame is a strike")))
 
-(defcard-doc "## The UI !
+(defcard-doc "# The UI !
 The computation of the score was fun but it is only one aspect of a project.
 My idea was to pursue this Kata with a visual simulation because it gives a dynamic aspect of the computation.
 
@@ -287,12 +297,23 @@ As the UI is a funciton of the state, I just have to write a function that trans
                       :score 19}]
            (ui/frame-view frame)))
 
-(defcard tenth-frame
+(defcard tenth-frame-only-strikes
          "FIX ME ! Tenth frame with strike and Extra ball"
          (let [frame {:rolls [10 10 10]
                       :id 10
                       :score 19}]
            (ui/frame-view frame)))
+
+
+(defcard-doc
+  "## The dynamic aspect of the scoring
+
+
+  In the first two parts, we focused on static aspects of the Kata. It is time to move things e little bit.
+  Now that the scoring and the display is done, the last part is to consider the progression of the scoring.
+  ")
+
+
 
 (deftest frame-is-done?
          "## Test if a frame is done or not
@@ -310,3 +331,11 @@ As the UI is a funciton of the state, I just have to write a function that trans
                                {:rolls [10 10 2] :id 10} true
                                {:rolls [8 2] :id 10} false
                                {:rolls [8 2 7] :id 10} true)))
+
+
+
+(defcard bowling-kata-simulation
+         "## Finally "
+         (dom-node
+           (fn [_ node]
+             (om/add-root! ui/reconciler ui/Game node))))
