@@ -187,7 +187,7 @@ The partition functions are a perfect fit for this job :
                   (map bow/frame-score))
 
              "- We have the score for each frame but the board shows that score is accumulating, this is a job for reduce.
-             But reduce will give us the final score, we need the intermediate steps, that's exactly what reductions does."
+             But reduce will give us the final score, we need the intermediate steps, that's exactly what `reductions` does."
 
              "The complete scoring function  : "
              (mkdn-pprint-source bow/scores)
@@ -317,7 +317,11 @@ As the UI is a funciton of the state, I just have to write a function that trans
 
 (deftest frame-is-done?
          "## Test if a frame is done or not
-                  In the dynamic of the game I must know if a frame is done and if we have to go to next frame "
+         In the dynamic of the game I must know if a frame is done and if we have to go to next frame
+         Again "
+
+
+
          (testing
            (are [frame result] (= (bow/frame-done? frame) result)
                                {:rolls  [] :id 1} false

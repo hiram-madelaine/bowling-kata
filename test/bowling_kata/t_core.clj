@@ -40,12 +40,6 @@
 
 
 
-(fact "round trip all-rolls<->game"
-      (-> all-rolls
-          bow/->game
-          bow/all-rolls) => all-rolls)
-
-
 (defn only [pins-down]
   (into [] (repeat 10 [pins-down pins-down])))
 

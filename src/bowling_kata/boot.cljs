@@ -136,7 +136,6 @@
 
 (defmethod mutate 'game/roll
   [{:keys [state] :as env} key params]
-  (prn @state)
   {:action #(swap! state next-game next-roll)})
 
 (defmethod mutate 'game/reset
