@@ -5,7 +5,7 @@
             [om.dom :as dom]
             [clojure.string :as str]
             [cljs.pprint :refer [pprint] :as pp]
-            [com.rpl.specter :as spec :refer [transform select FIRST LAST ALL comp-paths select-one] :include-macros true]
+            [com.rpl.specter :as spec :refer [transform select FIRST LAST ALL comp-paths select-one putval] :include-macros true]
             [cljs.core.match :refer-macros [match]]
             [schema.core :as s :include-macros true]))
 
@@ -135,6 +135,7 @@
 
 (defmethod mutate 'game/roll
   [{:keys [state] :as env} key params]
+  (prn @state)
   {:action #(swap! state next-game next-roll)})
 
 (defmethod mutate 'game/reset
