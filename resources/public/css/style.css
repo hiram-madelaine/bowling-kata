@@ -4,10 +4,6 @@ body {
     font-family: sans-serif;
 }
 
-.game {
-    border: 1px black solid;
-    display: flex;
-}
 
 .frame {
     display: flex;
@@ -33,4 +29,11 @@ body {
 
 .header {
     background-color: rgb(254,255,206);
+}
+
+
+
+.game {
+    border: 1px rgb(0,129,4) solid;
+    display: flex;
 }

@@ -1,5 +1,6 @@
 (ns bowling-kata.core
   (:require [schema.core :as s :include-macros true]
+            [com.rpl.specter :as spec :refer [transform select FIRST LAST ALL comp-paths collect select-one setval putval] :include-macros true]
             #?(:clj [clojure.core.match :refer [match]]
                :cljs [cljs.core.match :refer-macros [match]])))
 
@@ -103,7 +104,8 @@
        (mapv :rolls)))
 
 (s/defn update-score :- Game
-  "Update the game with the score for past and current frame."
+  "Update the game with the score for past and current frame.
+   TODO use Specter to update all frames up to the current."
   [{:keys [round frames] :as game} :- Game]
   (let [all-scores (->> game all-rolls scores)
         frames (map-indexed (fn [i f]

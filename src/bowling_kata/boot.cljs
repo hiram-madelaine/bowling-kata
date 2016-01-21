@@ -120,6 +120,7 @@
 (s/defn update-round :- Game
   "Update the round if the frame is done."
   [{:keys [round] :as game} :- Game ]
+  (prn game)
   (if (bow/frame-done? (select-one [:frames ALL #(= round (:id %))] game))
     (transform [:round] inc game)
     game))
