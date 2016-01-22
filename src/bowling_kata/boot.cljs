@@ -15,7 +15,6 @@
                         :frames (for [n (range 1 11)]
                                   {:rolls []
                                    :id    n
-                                   :bonus nil
                                    :score 0})}))
 
 (def state (atom empty-state))

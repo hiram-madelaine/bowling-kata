@@ -309,9 +309,18 @@ As the UI is a funciton of the state, I just have to write a function that trans
   "## The dynamic aspect of the scoring
 
 
-  In the first two parts, we focused on static aspects of the Kata. It is time to move things e little bit.
-  Now that the scoring and the display is done, the last part is to consider the progression of the scoring.
-  ")
+  In the first two parts, we focused on static aspects of the Kata.
+  Now it is time to focus on the flow of the scoring.
+
+  As we saw in the scoring section, a bonus can depend on the next frame's rolls.
+  So to display each frame's score during the **game**, we must recalculate the score for **all frames**, up to the **current frame** after a roll.
+
+  ### The Model for the UI
+
+
+
+  How can we track the current frame ?
+  Let's make this information explicit and put it in the model : ")
 
 
 

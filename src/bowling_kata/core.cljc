@@ -75,7 +75,6 @@
 ;________________________________________________|
 
 (s/defschema Frame {:rolls FrameRolls
-                    :bonus Bonus
                     :id    s/Int
                     :score Score})
 
