@@ -310,7 +310,7 @@ As the UI is a funciton of the state, I just have to write a function that trans
 
 
   In the first two parts, we focused on static aspects of the Kata.
-  Now it is time to focus on the flow of the scoring.
+  Now it is time to focus more on the flow of the scoring.
 
   As we saw in the scoring section, a bonus can depend on the next frame's rolls.
   So to display each frame's score during the **game**, we must recalculate the score for **all frames**, up to the **current frame** after a roll.
@@ -318,9 +318,15 @@ As the UI is a funciton of the state, I just have to write a function that trans
   ### The Model for the UI
 
 
+  So far the model was very minimalist because it was focused on the computation of the scoring.
+  Now that we have to visualize the full Game et keep track of the progression, new notions are emerging : Game, all frames, current frame, frame round
+  Let's make this information explicit and put it in the model.
 
-  How can we track the current frame ?
-  Let's make this information explicit and put it in the model : ")
+  In the context of the visualisaiton, to display a Frame, we need of course the FrameRolls but the round and the score."
+
+  (mkdn-pprint-source bow/Frame)
+
+  (mkdn-pprint-source bow/Game))
 
 
 

@@ -74,8 +74,10 @@
 ;         UI API                                 |
 ;________________________________________________|
 
+(def one-to-10? #(<= 1 % 10))
+
 (s/defschema Frame {:rolls FrameRolls
-                    :id    s/Int
+                    :id    (s/constrained s/Int one-to-10?)
                     :score Score})
 
 (s/defschema Game {:frames                        [Frame]
